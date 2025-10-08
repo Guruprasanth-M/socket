@@ -24,9 +24,9 @@ def chat_server():
     while True:
         #blocking the flow for new incoming
         ready_read,ready_write,error = sel.select(SOCKET_LIST,[],[],0)
-        #amma varatum nu kaathrukom
+        
         for sock in ready_read:
-            #amma vandachu
+            
             if sock == server_socket:
                 client_socket,addr = sock.accept()
                 SOCKET_LIST.append(client_socket)
