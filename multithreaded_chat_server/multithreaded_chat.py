@@ -31,18 +31,20 @@ class ChatBotThread(Thread):
 
     def run(self):
         while True:
-            time.sleep(0.025) #25ms
+            sleep(0.025) #25ms
             if len(self.messages) > 0:
                 for thread in self.threads:
                     for message in self.messages:
                         if thread.getusername() != message[0]:
                             #to be contiue start for 2.1hr
+                            pass
 
 
 
 
 class ChatserverOutgoingThread(Thread):
     def __init__(self,incoming_thread):
+        Thread.__init__(self)
         self.incoming_thread = incoming_thread
         self.messages = []
         self.can_kill = False
@@ -107,8 +109,8 @@ class ChatServerIncomingThread(Thread):
         self.can_kill = True
 
     def run(self):
-        while slef.conn._closed:
-            data - self.conn.recv(1024)
+        while self.conn._closed:
+            data = self.conn.recv(1024)
             if not data: #means client has disconnected.
                 # inform other that the client has disconnected.
                 self.incoming_thread.killThread()
