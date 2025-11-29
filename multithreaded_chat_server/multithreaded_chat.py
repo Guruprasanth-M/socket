@@ -24,26 +24,33 @@ class ChatBotThread(Thread):
     def addChatThread(self, thread):
         self.threads.append(thread)
 
-    def queueMessage(self,user,message):
-        fMessage = "{username} : {message}".format(username = user , message = message)
-        data = (user,fMessage)
-        self.messages.append(fMessage)
+    def removeChatThread(self, thread):
+        if thread in self.threads:
+            self.threads.remove(thread)
+
+    def queueMessage(self, user, message):
+        data = (user, message)
+        self.messages.append(data)
 
     def run(self):
         while True:
             sleep(0.025) #25ms
             if len(self.messages) > 0:
                 for thread in self.threads:
-                    for message in self.messages:
-                        if thread.getusername() != message[0]:
-                            #to be contiue start for 2.1hr
-                            pass
+                    for data in self.messages:
+                        user = data[0]
+                        msg  = data[1]
+                        if thread.getusername() != user[0]:
+                            thread.sendMessage(msg)                            
+
+                            
+                            
 
 
 
 
 class ChatserverOutgoingThread(Thread):
-    def __init__(self,incoming_thread):
+    def __init__(self, incoming_thread):
         Thread.__init__(self)
         self.incoming_thread = incoming_thread
         self.messages = []
@@ -55,12 +62,14 @@ class ChatserverOutgoingThread(Thread):
             conn = self.incoming_thread.getConnection()
             conn.sendall(fMessage.encode())
         except:
+            bot.removeChatThread(self.incoming_thread)
             self.killThread()
 
-    def queueMessage(self,message):
+    def queueMessage(self, message):
         self.messages.append(message)
 
-    def killThread(self,should_inform = False):
+    def killThread(self, should_inform = False):
+        #inform other that the client has disconnected.
         self.can_kill = True
 
     def run(self):
@@ -105,19 +114,25 @@ class ChatServerIncomingThread(Thread):
     def initSendMessageThread(self,message):
         self.incoming_thread = ChatserverOutgoingThread(self)
 
+    def sendMessage(self,message):
+        self.incoming_thread.queueMessage(message)
+
     def killThread(self):
+        bot.removeChatThread(self)
         self.can_kill = True
 
     def run(self):
-        while self.conn._closed:
+        while not self.conn._closed:
             data = self.conn.recv(1024)
             if not data: #means client has disconnected.
                 # inform other that the client has disconnected.
                 self.incoming_thread.killThread()
                 break
-
-
-
+            if data.decode().strip() == "kill":
+                self.killThread()
+            else:
+                print("{ip}:{message}".format(ip = self.user_ip,message = data.decode()))
+                bot.queueMessage(self.getusername(),data.decode().strip())
 
 
 
