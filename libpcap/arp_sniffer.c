@@ -9,6 +9,22 @@
 #include<netinet/if_ether.h>
 #include<time.h>
 
+#define ARP_REQUEST 1   //ARP Request
+#define ARP_RESPONSE 2  //ARP Response
+
+typedef struct _arp_hdr arp_hdr;
+struct _arp_hdr{  
+    uint16_t htype;        //Hardware type
+    uint16_t ptype;        //Protocol type
+    uint8_t hlen;          //Hardware address
+    uint8_t plen;          //Protocol address
+    uint16_t opcode;       //Operation code(request or respone)
+    uint8_t sender_mac[6]; //Sender hardware address
+    uint8_t sender_ip[4];  //Sender ip address
+    uint8_t target_mac[6]; //Target mac address
+    uint8_t target_ip[4];  //Target ip address
+};
+
 int print_available_interfaces(){
     char error[PCAP_ERRBUF_SIZE];
     pcap_if_t *interfaces, *temp;
@@ -52,25 +68,74 @@ void print_version(){
 
 void print_help(char *bin){
     printf("\nAvailable options:\n");
-    printf("----------------------------\n");
-    printf("-h or --help:       \t\tprint this help text.\n");
-    printf("-l or --lookup:     \t\tprint the available interfaces.\n");
+    printf("--------------------------------------------------------------\n");
+    printf("-h or --help:\t\t\tprint this help text.\n");
+    printf("-l or --lookup:\t\t\tprint the available interfaces.\n");
     printf("-i or --interface:\t\tProvide the interface to sniff on.\n");
     printf("-v or --version:\t\tprint the version information.\n");
-    printf("---------------------------------------------------------\n");
+    printf("--------------------------------------------------------------\n");
     printf("\nUsage: %s -i<interface> [You can look for the available interfaces using -l option]\n", bin);
     exit(1);
 }
 
 
+char* get_hardware_address(uint8_t mac[6]){
+    char *m = (char*)malloc(20*sizeof(char));
+    sprintf(m,"%02X:%02X:%02X:%02X:%02X:%02X",mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
+    return m;
+}
+
+char* get_ip_address(uint8_t ip[4]){
+    char *m = (char*)malloc(20*sizeof(char));
+    sprintf(m,"%d.%d.%d.%d",ip[0],ip[1],ip[2],ip[3]);
+    return m;
+}
+
 int sniff_arp(char *device_name){
-    int i;
     char error[PCAP_ERRBUF_SIZE];
     pcap_t *pack_desc;
     const u_char *packet;
     struct pcap_pkthdr header;
     struct ether_header *eptr;
+    arp_hdr *arpheader = NULL;
+    int i;
     u_char *hard_ptr;
+    char *t_mac, *t_ip, *s_mac, *s_ip;
+
+    pack_desc = pcap_open_live(device_name,BUFSIZ,0,1,error);
+    if(pack_desc == NULL){
+        printf("%s\n",error);
+        print_available_interfaces();
+        return -1;
+    }else{
+        printf("Listening on %s......\n",device_name);
+    }
+    while(1){
+        packet = pcap_next(pack_desc,&header);
+        if(packet == NULL){
+            printf("ERROR: Cannot capture packet\n");
+            return -1;
+        }else{
+            eptr = (struct ether_header*)packet;
+            if(ntohs(eptr->ether_type) == ETHERTYPE_ARP){
+                arpheader = (arp_hdr*)(packet+14);
+                printf("\nReceived an ARP packet with length %d\n",header.len);
+                printf("Received at %s",ctime((const time_t*) &header.ts.tv_sec));
+                printf("Ethernet header length: %d\n",ETHER_HDR_LEN);
+                printf("Operation type: %s\n", ntohs(arpheader->opcode) == ARP_REQUEST ? "ARP Request" : "ARP Response");
+                t_ip = get_ip_address(arpheader->target_ip);
+                t_mac = get_hardware_address(arpheader->target_mac);
+                s_ip = get_ip_address(arpheader->sender_ip);
+                s_mac = get_hardware_address(arpheader->sender_mac);
+                printf("Sender MAC: %s\n", s_mac);
+                printf("Sender IP: %s\n", s_ip);
+                printf("Target MAC: %s\n", t_mac);
+                printf("Target IP: %s\n", t_ip);
+                printf("--------------------------------------------------------\n");
+            }
+        }
+    }
+    return 0;
 }
 
 
