@@ -27,14 +27,7 @@ struct _arp_hdr{
 };
 
 void aleart_spoof(char *ip, char *mac){
-    char cmd[256];
-    sprintf(cmd,"/usr/bin/notify-send -t 5000 -i face-angry \"Possible ARP Spoofing Detected. IP: %s and MAC: %s.\"",ip,mac);
-    system(cmd);
     printf("ALERT: Possible ARP Spoofing Detected. IP: %s and MAC: %s.\n",ip,mac);
-}
-
-void aleart_welcome(){
-    system("/usr/bin/notify-send -t 5000 -i face-angle \"I am watching for ARP Spoofing.Sit back and relax!\"");
 }
 
 int print_available_interfaces(){
@@ -81,10 +74,10 @@ void print_version(){
 void print_help(char *bin){
     printf("\nAvailable options:\n");
     printf("--------------------------------------------------------------\n");
-    printf("-h or --help:\t\t\tprint this help text.\n");
-    printf("-l or --lookup:\t\t\tprint the available interfaces.\n");
-    printf("-i or --interface:\t\tProvide the interface to sniff on.\n");
-    printf("-v or --version:\t\tprint the version information.\n");
+    printf("-h or --help:      print this help text.\n");
+    printf("-l or --lookup:    print the available interfaces.\n");
+    printf("-i or --interface: Provide the interface to sniff on.\n");
+    printf("-v or --version:   print the version information.\n");
     printf("--------------------------------------------------------------\n");
     printf("\nUsage: %s -i<interface> [You can look for the available interfaces using -l option]\n", bin);
     exit(1);
@@ -115,7 +108,8 @@ int sniff_arp(char *device_name){
     char *t_mac, *t_ip, *s_mac, *s_ip;
     int counter = 0;
     time_t ct,lt;
-    long int diff;
+    long int diff = 0;
+    time(&lt);
 
     pack_desc = pcap_open_live(device_name,BUFSIZ,0,1,error);
     if(pack_desc == NULL){
@@ -128,8 +122,7 @@ int sniff_arp(char *device_name){
     while(1){
         packet = pcap_next(pack_desc,&header);
         if(packet == NULL){
-            printf("ERROR: Cannot capture packet\n");
-            return -1;
+            continue;   // timeout, wait for next packet
         }else{
             eptr = (struct ether_header*)packet;
             if(ntohs(eptr->ether_type) == ETHERTYPE_ARP){
@@ -139,7 +132,7 @@ int sniff_arp(char *device_name){
                     counter = 0;
                 }
                 printf("ct: %ld; diff: %ld; Counter: %d\n",ct,diff,counter);
-                arpheader = (arp_hdr*)(packet+14);
+                arpheader = (arp_hdr*)(packet + ETHER_HDR_LEN);
                 printf("\nReceived an ARP packet with length %d\n",header.len);
                 printf("Received at %s",ctime((const time_t*) &header.ts.tv_sec));
                 printf("Ethernet header length: %d\n",ETHER_HDR_LEN);
@@ -153,13 +146,17 @@ int sniff_arp(char *device_name){
                 printf("Target MAC: %s\n", t_mac);
                 printf("Target IP: %s\n", t_ip);
                 printf("--------------------------------------------------------\n");
+
                 lt = time(NULL);
                 counter++;
                 if(counter > 10){
                     aleart_spoof(s_ip, s_mac);
-                }else{
-
+                    counter = 0;
                 }
+                free(t_ip);
+                free(t_mac);
+                free(s_ip);
+                free(s_mac);
             }
         }
     }
@@ -168,15 +165,6 @@ int sniff_arp(char *device_name){
 
 
 int main(int argc, char *argv[]){
-
-    if(access("/usr/bin/notify-send",F_OK) == -1){
-        printf("Missing dependency: notify-send\n");
-        printf("Please run: sudo apt-get install libnotify-bin");
-        printf("\n");
-        print_version();
-    }else{
-        aleart_welcome();
-    }
 
     if(argc < 2 || strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0){
         print_version();
