@@ -151,7 +151,6 @@ int sniff_arp(char *device_name){
                 counter++;
                 if(counter > 10){
                     aleart_spoof(s_ip, s_mac);
-                    counter = 0;
                 }
                 free(t_ip);
                 free(t_mac);
