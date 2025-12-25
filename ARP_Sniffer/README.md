@@ -42,7 +42,6 @@ This tool captures ARP packets from a specified network interface, analyzes traf
 
 ### Install dependencies on Debian/Ubuntu
 
-```markdown
 ```bash
 sudo apt update
 sudo apt install libpcap-dev
