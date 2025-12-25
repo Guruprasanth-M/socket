@@ -8,7 +8,7 @@ This repository contains a collection of projects demonstrating networking, syst
 
 ### 1. 🛡️ ARP Spoof Detector
 **Directory**: [`ARP_Sniffer`](https://github.com/Guruprasanth-M/socket/tree/master/ARP_Sniffer)  
-- **Description**: A C-based ARP spoofing detection tool. Captures ARP packets, analyzes traffic, and identifies suspicious activities using threshold-based logic.  
+- **Description**: A C-based ARP spoofing detection tool. Captures ARP packets, analyzes traffic, and identifies suspicious activities using threshold-based logic.
 - **Key Features**:
   - Live ARP packet sniffing with `libpcap`.
   - Real-time traffic analysis for ARP spoofing detection.
@@ -25,7 +25,34 @@ This repository contains a collection of projects demonstrating networking, syst
 
 ---
 
-### 2. 🧮 Math Server
+### 2. 🛑 TCP RST Injection Tool
+**File**: [`sysdos.c`](https://github.com/Guruprasanth-M/socket/blob/498ff5e08970b901a62d836d20f8a34ccc4d1672/libpcap/sysdos.c)  
+**Directory**: [`libpcap`](https://github.com/Guruprasanth-M/socket/tree/master/libpcap)  
+- **Description**: This tool monitors network traffic and injects TCP RST (Reset) packets to terminate suspicious or malicious TCP sessions. It is a standalone utility for DoS or traffic mitigation experiments.
+- **Key Features**:
+  - Uses `libpcap` to capture TCP traffic on a specified interface.
+  - Constructs custom TCP RST packets using raw sockets.
+  - Excellent for studying `libpcap` integration and session management.
+- **How to Build and Use**:
+  Compile the file and provide the necessary interface and port as arguments:
+  ```bash
+  gcc -o sysdos libpcap/sysdos.c -lpcap
+  sudo ./sysdos eth0 6666
+  ```
+  This listens on interface `eth0` for TCP traffic on port `6666`, intercepts, and sends reset packets to terminate sessions.
+- **Example Output**:
+  ```plaintext
+  Listening on eth0.......
+  Sent RST packet:
+      SRC:PORT 192.168.1.5:12345
+      DEST:PORT 192.168.1.100:6666
+      SEQ 1345
+      ACK 5678
+  ```
+
+---
+
+### 3. 🧮 Math Server
 **Directory**: [`math_server`](https://github.com/Guruprasanth-M/socket/tree/master/math_server)  
 - **Description**: A Python server leveraging the Linux `bc` utility to provide advanced mathematical computations over TCP connections.
 - **Key Features**:
@@ -42,7 +69,7 @@ This repository contains a collection of projects demonstrating networking, syst
 
 ---
 
-### 3. 💬 Multi-Client Chat Server
+### 4. 💬 Multi-Client Chat Server
 **Directory**: [`multithreaded_chat_server`](https://github.com/Guruprasanth-M/socket/tree/master/multithreaded_chat_server)  
 - **Description**: A concurrent chat server built with Python's `socket` and `threading` modules.
 - **Key Features**:
@@ -54,7 +81,7 @@ This repository contains a collection of projects demonstrating networking, syst
 
 ---
 
-### 4. 🔄 Echo Server
+### 5. 🔄 Echo Server
 **Directory**: [`echo_server`](https://github.com/Guruprasanth-M/socket/tree/master/echo_server)  
 - **Description**: A basic server that echoes received messages back to clients.
 - **Key Features**:
@@ -65,7 +92,7 @@ This repository contains a collection of projects demonstrating networking, syst
 
 ---
 
-### 5. 🔧 Thread and Process Examples
+### 6. 🔧 Thread and Process Examples
 **Directory**: [`thread_process`](https://github.com/Guruprasanth-M/socket/tree/master/thread_process)  
 - **Description**: Demonstrates the usage of threads and multiprocessing in Python for concurrent tasks.
 - **Key Features**:
@@ -74,21 +101,12 @@ This repository contains a collection of projects demonstrating networking, syst
 
 ---
 
-### 6. 📦 Libpcap Utility
-**Directory**: [`libpcap`](https://github.com/Guruprasanth-M/socket/tree/master/libpcap)  
-- **Description**: Demonstrates how to utilize the `libpcap` library for packet sniffing. Explores capturing different network packets and analyzing them.
-- **Key Features**:
-  - Real-world example of using the `libpcap` library.
-  - Foundation for building network monitoring applications in C.
-
----
-
-### 7. 🌐 Client for Socket Server
+### 7. 🌐 Client for Socket Servers
 **File**: [`client.py`](https://github.com/Guruprasanth-M/socket/blob/master/client.py)  
 - **Description**: A Python-based TCP client that connects to server applications for testing and debugging.
 - **Key Features**:
   - Can connect to any server running on a specified IP and port.
-  - Serve as an interface for testing server responses.
+  - Serves as an interface for testing server responses.
 
 ---
 
@@ -102,7 +120,8 @@ socket/
 ├── echo_server/                # Basic echo server
 ├── thread_process/             # Thread and process examples
 ├── libpcap/                    # Libpcap utility examples
-├── client.py                   # TCP client for connecting to servers
+│   └── sysdos.c                # TCP RST injection standalone tool
+├── client.py                   # Python TCP client
 ├── socket_1.py                 # Python script for multithreaded chat server
 └── README.md                   # Project documentation
 ```
@@ -116,11 +135,18 @@ socket/
   - Python 3.x
   - C (with `libpcap`)
 - **Dependencies**:
-  - `libpcap-dev`: For packet capturing in C-based tools.
+  - `libpcap-dev` (for C-based tools)
 
 ---
 
 ## 📦 Usage Examples
+
+### TCP RST Injection Tool:
+Compile and run with interface and port:
+```bash
+gcc -o sysdos libpcap/sysdos.c -lpcap
+sudo ./sysdos eth0 6666
+```
 
 ### ARP Spoof Detector:
 ```bash
